@@ -18,7 +18,6 @@ module.exports = {
     UserName: process.env.UserName,
     Password: process.env.Password,
     Dialect: process.env.Dialect
-
   }
 
 };
