@@ -1,11 +1,11 @@
 
 const { JWTConstants } = require('../constants/roleConstants')
-const { secretKey } = require('../config');
+const { JWTSecretKey } = require('../config');
 const jwt = require('jsonwebtoken');
-function generateToken(userId, accessRole, expiry = JWTConstants.EXPIRY) {
+function generateToken(userId, expiry = JWTConstants.EXPIRY) {
     return jwt.sign(
-        { userId, accessRole },
-        secretKey,
+        { userId },
+        JWTSecretKey,
         { expiresIn: expiry }
     );
 }

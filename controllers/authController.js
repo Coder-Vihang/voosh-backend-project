@@ -4,7 +4,8 @@ const bcrypt = require('bcrypt');
 const { JWTSecretKey } = require('../config');
 const { AccessRoles, JWTConstants } = require('../constants/roleConstants')
 const { createUser, findUserFromUserEmail } = require('../dbhelpers/userHelper');
-const { invalidateTokenDetails, storeTokenDetails } = require('../dbhelpers/tokenHelper');
+const { invalidateTokenDetails, storeTokenDetails, findTokenDetailsByUserId } = require('../dbhelpers/tokenHelper');
+const { generateToken } = require('../helpers/jwtHelpers');
 
 exports.register = async (req, res) => {
   try {
@@ -25,6 +26,10 @@ exports.register = async (req, res) => {
       if (!passwordMatch) {
         return res.status(400).json({ message: 'Invalid password', isSuccess: false });
       }
+      const tokenReponse = await findTokenDetailsByUserId(userDetails.userId);
+      if(tokenReponse?.token){
+        return res.status(201).json({ token: tokenReponse.token });
+      }
     }
 
     if (!userDetails) {
@@ -32,16 +37,12 @@ exports.register = async (req, res) => {
       userDetails = await createUser({ email, password: hashedPassword, accessRole: AccessRoles.PUBLIC });
     }
 
-    const token = jwt.sign(
-      { userId: userDetails.userId },
-      JWTSecretKey,
-      { expiresIn: JWTConstants.EXPIRY }
-    );
+   
+      const token = generateToken(userDetails.userId, userDetails.accessRole);
+      await storeTokenDetails(userDetails.userId, token);
+      res.status(201).json({ token });
 
-    await storeTokenDetails(userDetails.userId, token);
-
-    res.status(201).json({ token });
-
+    
   } catch (error) {
     console.error('Error registering user:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -70,7 +71,7 @@ exports.registerOauth = async (req, res) => {
   res.status(200).json({ message: 'Google registration successfully', isSuccess: true });
 };
 
-exports.googleCallBack= async (req, res) => {
+exports.googleCallBack = async (req, res) => {
   console.log(req.user);
   res.status(200).json({ message: 'Google callback successfully', isSuccess: true });
 }
