@@ -4,7 +4,7 @@ async function invalidateTokenDetails(userId) {
     try {
         const [rowsAffected] = await TokenDetails.update(
             { isActive: false },
-            { where: { userId } }
+            { where: { userId, isActive: true } }
         );
         return rowsAffected ;
     } catch (error) {
