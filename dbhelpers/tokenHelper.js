@@ -39,5 +39,18 @@ async function findTokenDetailsByUserId(userId) {
     }
 }
 
+async function invalidateToken(token) {
+    try {
+        const [rowsAffected] = await TokenDetails.update(
+            { isActive: false },
+            { where: { token, isActive: true } }
+        );
+        return rowsAffected ;
+    } catch (error) {
+        console.error('Error updating token detail:', error);
+        throw error;
+    }
+}
 
-module.exports = { invalidateTokenDetails, storeTokenDetails, findTokenDetailsByUserId };
+
+module.exports = { invalidateTokenDetails, storeTokenDetails, findTokenDetailsByUserId, invalidateToken };
