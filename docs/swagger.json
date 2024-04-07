@@ -307,6 +307,12 @@
             "name": "Authorization",
             "in": "header",
             "type": "string"
+          },
+          {
+            "name": "imageURL",
+            "in": "formData",
+            "type": "file",
+            "description": "Image file to upload"
           }
         ],
         "responses": {
