@@ -1,7 +1,7 @@
 {
-  "swagger": "2.0",
+  "swagger": "1.0",
   "info": {
-    "version": "2.0.0",
+    "version": "1.0.0",
     "title": "Voosh Project Apis",
     "description": "API for Managing User Details",
     "contact": {
