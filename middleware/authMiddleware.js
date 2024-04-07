@@ -4,7 +4,7 @@ const { invalidateToken, findTokenDetailsByUserId } = require('../dbhelpers/toke
 
 exports.authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = authHeader && authHeader.split(' ')[0] === 'Bearer' ? authHeader.split(' ')[1] : null;
     if (!token) {
         return res.status(401).json({ message: 'No token provided', isSuccess: false });
     }
