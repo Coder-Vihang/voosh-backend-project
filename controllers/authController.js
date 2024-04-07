@@ -4,11 +4,18 @@ const { AccessRoles } = require('../constants/roleConstants')
 const { createUser, findUserFromUserEmail } = require('../dbhelpers/userHelper');
 const { invalidateTokenDetails, storeTokenDetails, findTokenDetailsByUserId } = require('../dbhelpers/tokenHelper');
 const { generateToken } = require('../helpers/jwtHelpers');
+const { validateUserData } = require('../helpers/validationHelper');
 
 
 exports.register = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const errors = validateUserData({ email, password });
+
+    if (Object.keys(errors).length > 0) {
+      console.log('Validation Errors:');
+      throw new Error('Validation Errors: ' + JSON.stringify(errors));
+    }
 
     if (!email) {
       return res.status(400).json({ message: 'Email is required' });
@@ -44,8 +51,13 @@ exports.register = async (req, res) => {
     res.status(201).json({ token });
 
   } catch (error) {
-    console.error('Error registering user:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    if (error.message.startsWith('Validation Errors')) {
+      console.error('Validation Errors:', error.message);
+      res.status(400).json({ message: error.message, isSuccess: false });
+    } else {
+      console.error('Error registering user:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
   }
 
 };
@@ -57,7 +69,7 @@ exports.signout = async (req, res) => {
     if (rowsAffected > 0) {
       res.status(200).json({ message: 'Signout successful', isSuccess: true });
     } else {
-      res.status(404).json({ message: 'Token not found for the provided userId',isSuccess: false });
+      res.status(404).json({ message: 'Token not found for the provided userId', isSuccess: false });
     }
   } catch (error) {
     console.error('Error signing out:', error);
@@ -67,7 +79,7 @@ exports.signout = async (req, res) => {
 
 exports.googleCallBack = async (req, res) => {
   try {
-    const { email } = req.user['_json'];
+    const { email, name } = req.user['_json'];
 
     let userDetails = await findUserFromUserEmail(email, []);
 
@@ -82,7 +94,7 @@ exports.googleCallBack = async (req, res) => {
         return res.status(200).json({ message: 'User logged in successfully', token, isSuccess: true });
       }
     } else {
-      userDetails = await createUser({ email, accessRole: AccessRoles.PUBLIC });
+      userDetails = await createUser({ email, name, accessRole: AccessRoles.PUBLIC });
       const token = generateToken(userDetails.userId, userDetails.accessRole);
       await storeTokenDetails(userDetails.userId, token);
       return res.status(201).json({ message: 'User registered and logged in successfully', token, isSuccess: true });
@@ -101,7 +113,7 @@ exports.google = passport.authenticate('google', { scope: ['email', 'profile'] }
 exports.googleLogout = async (req, res) => {
   try {
     const { email } = req.user['_json'];
- 
+
     let userDetails = await findUserFromUserEmail(email, []);
 
     const rowsAffected = await invalidateTokenDetails(userDetails.userId);

@@ -1,11 +1,12 @@
 
 const fs = require('fs');
 const { Op } = require('sequelize');
-const { AccessRoles,AWSConstants } = require('../constants/roleConstants');
+const { AccessRoles, AWSConstants } = require('../constants/roleConstants');
 const { findUserFromUserId, updateUser, fetchUsersWithCondition } = require('../dbhelpers/userHelper');
 const config = require('../config');
 const s3 = require('../utils/s3Utils');
 const { generateS3KeyFromUserId } = require('../helpers/s3helpers');
+const { validateUserData } = require('../helpers/validationHelper')
 
 exports.fetchUsers = async (req, res) => {
     try {
@@ -23,11 +24,11 @@ exports.fetchUsers = async (req, res) => {
             return res.status(200).json({ users });
         } else {
             const profiles = await fetchUsersWithCondition({
-                    [Op.or]: [
-                        { accessRole: AccessRoles.PUBLIC },
-                        { userId: userId }
-                    ]
-                }
+                [Op.or]: [
+                    { accessRole: AccessRoles.PUBLIC },
+                    { userId: userId }
+                ]
+            }
             );
             return res.status(200).json({ profiles, message: 'success', isSuccess: true });
         }
@@ -87,13 +88,24 @@ exports.editMyProfile = async (req, res) => {
             phone: user.phone,
             email: user.email
         };
-
+        const errors = validateUserData(updatedUser);
+        
+        if (Object.keys(errors).length > 0) {
+            console.log('Validation Errors:');
+            throw new Error('Validation Errors: ' + JSON.stringify(errors));
+        } 
+        
         await updateUser(userId, updatedUser);
 
         res.status(200).json({ user: updatedUser, message: 'Profile updated successfully', isSuccess: true });
     } catch (error) {
+      if (error.message.startsWith('Validation Errors')) {
+        console.error('Validation Errors:', error.message);
+        res.status(400).json({ message: error.message, isSuccess: false });
+    } else {
         console.error('Error editing user profile:', error);
         res.status(500).json({ message: 'Internal server error', isSuccess: false });
+    }
     }
 };
 
