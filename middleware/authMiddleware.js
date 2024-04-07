@@ -33,3 +33,11 @@ exports.authenticateToken = async (req, res, next) => {
     }
 };
 
+exports.isLoggedIn = (req, res, next) => {
+    try {
+      req.user ? next() : res.status(401).json({ message: 'Token expired', isSuccess: false });
+    } catch (error) {
+      return res.status(500).json({ message: 'Internal server error', isSuccess: false });
+    }
+    }
+
