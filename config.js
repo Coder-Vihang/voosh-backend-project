@@ -1,8 +1,8 @@
 module.exports = {
   JWTSecretKey: process.env.JWTSecretKey,
   AWSConfig: {
-    AccessKeyId: process.env.AWSAccessKeyId,
-    SecretAccessKey: process.env.AWSSecretAccessKey,
+    AccessKeyId: process.env.AccessKeyId,
+    SecretAccessKey: process.env.SecretAccessKey,
     ImageS3Bucket: process.env.ImageS3Bucket,
     Region: process.env.Region,
     PreSignedUrlExpiry: process.env.PreSignedUrlExpiry,

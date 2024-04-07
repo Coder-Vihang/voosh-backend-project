@@ -24,8 +24,7 @@ exports.authenticateToken = async (req, res, next) => {
             return res.status(403).json({ message: 'Invalid token', isSuccess: false });
         }
         if (error.name === 'TokenExpiredError') {
-            await invalidateTokenDetails(req.user.userId);
-            return res.status(401).json({ message: 'Token expired', isSuccess: false });
+            return res.status(401).json({ message: 'Token expired Please Login', isSuccess: false });
         }
 
         console.error('Error authenticating token:', error.message);
