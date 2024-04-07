@@ -5,6 +5,7 @@ const { createUser, findUserFromUserEmail } = require('../dbhelpers/userHelper')
 const { invalidateTokenDetails, storeTokenDetails, findTokenDetailsByUserId } = require('../dbhelpers/tokenHelper');
 const { generateToken } = require('../helpers/jwtHelpers');
 const { validateUserData } = require('../helpers/validationHelper');
+const { StatusCodes, ResponseMessages} = require('../constants/messages');
 
 
 exports.register = async (req, res) => {
@@ -18,11 +19,11 @@ exports.register = async (req, res) => {
     }
 
     if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
+      return res.status(StatusCodes.BAD_REQUEST).json({ message: ResponseMessages.ERROR.EMAIL_REQUIRED, isSuccess: false });
     }
 
     if (!password) {
-      return res.status(400).json({ message: 'Password is required' });
+      return res.status(StatusCodes.BAD_REQUEST).json({ message: ResponseMessages.ERROR.PASSWORD_REQUIRED, isSuccess: false });
     }
 
     let userDetails = await findUserFromUserEmail(email, []);
@@ -30,11 +31,11 @@ exports.register = async (req, res) => {
     if (userDetails) {
       const passwordMatch = await bcrypt.compare(password, userDetails.password);
       if (!passwordMatch) {
-        return res.status(400).json({ message: 'Invalid password', isSuccess: false });
+        return res.status(StatusCodes.BAD_REQUEST).json({ message: ResponseMessages.ERROR.INVALID_PASSWORD, isSuccess: false });
       }
       const tokenReponse = await findTokenDetailsByUserId(userDetails.userId);
       if (tokenReponse?.token) {
-        return res.status(201).json({ token: tokenReponse.token });
+        return res.status(StatusCodes.CREATED).json({ token: tokenReponse.token });
       }
     }
 
@@ -48,15 +49,15 @@ exports.register = async (req, res) => {
 
     await storeTokenDetails(userDetails.userId, token);
 
-    res.status(201).json({ token });
+    res.status(StatusCodes.CREATED).json({ token });
 
   } catch (error) {
     if (error.message.startsWith('Validation Errors')) {
       console.error('Validation Errors:', error.message);
-      res.status(400).json({ message: error.message, isSuccess: false });
+      res.status(StatusCodes.BAD_REQUEST).json({ message: error.message, isSuccess: false });
     } else {
       console.error('Error registering user:', error);
-      res.status(500).json({ message: 'Internal server error' });
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Internal server error', isSuccess: false });
     }
   }
 
@@ -67,13 +68,13 @@ exports.signout = async (req, res) => {
 
     const rowsAffected = await invalidateTokenDetails(userId);
     if (rowsAffected > 0) {
-      res.status(200).json({ message: 'Signout successful', isSuccess: true });
+      res.status(StatusCodes.SUCCESS).json({ message: ResponseMessages.SUCCESS.SIGNOUT_SUCCESS, isSuccess: true });
     } else {
-      res.status(404).json({ message: 'Token not found for the provided userId', isSuccess: false });
+      res.status(StatusCodes.BAD_REQUEST).json({ message: ResponseMessages.ERROR.TOKEN_NOT_FOUND, isSuccess: false });
     }
   } catch (error) {
     console.error('Error signing out:', error);
-    res.status(500).json({ message: 'Internal server error', isSuccess: false });
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: ResponseMessages.ERROR.INTERNAL_SERVER_ERROR, isSuccess: false });
   }
 };
 
@@ -87,26 +88,26 @@ exports.googleCallBack = async (req, res) => {
       const tokenResponse = await findTokenDetailsByUserId(userDetails.userId);
 
       if (tokenResponse?.token) {
-        return res.status(200).json({ message: 'User logged in successfully', token: tokenResponse.token, isSuccess: true });
+        return res.status(StatusCodes.SUCCESS).json({ message: ResponseMessages.SUCCESS.LOGIN_SUCCESS, token: tokenResponse.token, isSuccess: true });
       } else {
         const token = generateToken(userDetails.userId, userDetails.accessRole);
         await storeTokenDetails(userDetails.userId, token);
-        return res.status(200).json({ message: 'User logged in successfully', token, isSuccess: true });
+        return res.status(StatusCodes.SUCCESS).json({ message: ResponseMessages.SUCCESS.LOGIN_SUCCESS, token, isSuccess: true });
       }
     } else {
       userDetails = await createUser({ email, name, accessRole: AccessRoles.PUBLIC });
       const token = generateToken(userDetails.userId, userDetails.accessRole);
       await storeTokenDetails(userDetails.userId, token);
-      return res.status(201).json({ message: 'User registered and logged in successfully', token, isSuccess: true });
+      return res.status(StatusCodes.CREATED).json({ message: `${ResponseMessages.SUCCESS.REGISTERED_SUCCESSFULLY} ${ResponseMessages.SUCCESS.LOGIN_SUCCESS}`, token, isSuccess: true });
     }
   } catch (error) {
     console.error('Error handling Google callback:', error);
-    return res.status(500).json({ message: 'Internal server error', isSuccess: false });
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: ResponseMessages.ERROR.INTERNAL_SERVER_ERROR, isSuccess: false });
   }
 };
 
 exports.googleFailure = (req, res) => {
-  res.status(401).json({ message: 'Google authentication failed', isSuccess: false });
+  res.status(StatusCodes.UNAUTHORIZED).json({ message: ResponseMessages.ERROR.AUTH_FAILED, isSuccess: false });
 }
 exports.google = passport.authenticate('google', { scope: ['email', 'profile'] })
 
@@ -122,10 +123,10 @@ exports.googleLogout = async (req, res) => {
       req.session.destroy();
       res.redirect('/');
     } else {
-      res.status(404).json({ message: 'Token not found for the provided userId' });
+      res.status(StatusCodes.NOT_FOUND).json({ message: ResponseMessages.ERROR.TOKEN_NOT_FOUND, isSuccess: false });
     }
   } catch (error) {
     console.error('Error handling Google logout:', error);
-    return res.status(500).json({ message: 'Internal server error', isSuccess: false });
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: ResponseMessages.ERROR.INTERNAL_SERVER_ERROR, isSuccess: false });
   }
 };

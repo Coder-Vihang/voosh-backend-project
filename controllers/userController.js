@@ -6,7 +6,8 @@ const { findUserFromUserId, updateUser, fetchUsersWithCondition } = require('../
 const config = require('../config');
 const s3 = require('../utils/s3Utils');
 const { generateS3KeyFromUserId } = require('../helpers/s3helpers');
-const { validateUserData } = require('../helpers/validationHelper')
+const { validateUserData } = require('../helpers/validationHelper');
+const { StatusCodes, ResponseMessages } = require('../constants/messages');
 
 exports.fetchUsers = async (req, res) => {
     try {
@@ -15,13 +16,13 @@ exports.fetchUsers = async (req, res) => {
         const user = await findUserFromUserId(userId);
 
         if (!user?.accessRole) {
-            return res.status(404).json({ message: 'User not found', isSuccess: false });
+            return res.status(StatusCodes.NOT_FOUND).json({ message: ResponseMessages.ERROR.USER_NOT_FOUND, isSuccess: false });
         }
 
         if (user.accessRole === AccessRoles.ADMIN) {
 
             const users = await fetchUsersWithCondition({})
-            return res.status(200).json({ users });
+            return res.status(StatusCodes.SUCCESS).json({ users });
         } else {
             const profiles = await fetchUsersWithCondition({
                 [Op.or]: [
@@ -30,11 +31,11 @@ exports.fetchUsers = async (req, res) => {
                 ]
             }
             );
-            return res.status(200).json({ profiles, message: 'success', isSuccess: true });
+            return res.status(StatusCodes.SUCCESS).json({ profiles, message: ResponseMessages.SUCCESS.PROFILE_FETCHED, isSuccess: true });
         }
     } catch (error) {
         console.error('Error fetching users:', error);
-        res.status(500).json({ message: 'Internal server error', isSuccess: false });
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: ResponseMessages.ERROR.INTERNAL_SERVER_ERROR, isSuccess: false });
     }
 };
 
@@ -44,13 +45,13 @@ exports.fetchMyProfile = async (req, res) => {
         const profile = await findUserFromUserId(userId);
 
         if (!profile) {
-            return res.status(404).json({ message: 'User not found', isSuccess: false });
+            return res.status(StatusCodes.NOT_FOUND).json({ message: ResponseMessages.ERROR.USER_NOT_FOUND, isSuccess: false });
         }
 
-        return res.status(200).json({ profile, message: 'success', isSuccess: true });
+        return res.status(StatusCodes.SUCCESS).json({ profile, message: ResponseMessages.SUCCESS.PROFILE_FETCHED, isSuccess: true });
     } catch (error) {
         console.error('Error fetching userProfile:', error);
-        res.status(500).json({ message: 'Internal server error', isSuccess: false });
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: ResponseMessages.ERROR.INTERNAL_SERVER_ERROR, isSuccess: false });
     }
 };
 
@@ -60,7 +61,7 @@ exports.editMyProfile = async (req, res) => {
 
         let user = await findUserFromUserId(userId);
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(StatusCodes.NOT_FOUND).json({ message: ResponseMessages.ERROR.USER_NOT_FOUND, isSuccess: false });
         }
 
         if (req.body.imageURL) {
@@ -97,14 +98,14 @@ exports.editMyProfile = async (req, res) => {
         
         await updateUser(userId, updatedUser);
 
-        res.status(200).json({ user: updatedUser, message: 'Profile updated successfully', isSuccess: true });
+        res.status(StatusCodes.SUCCESS).json({ user: updatedUser, message: ResponseMessages.SUCCESS.PROFILE_UPDATED, isSuccess: true });
     } catch (error) {
       if (error.message.startsWith('Validation Errors')) {
         console.error('Validation Errors:', error.message);
-        res.status(400).json({ message: error.message, isSuccess: false });
+        res.status(StatusCodes.BAD_REQUEST).json({ message: error.message, isSuccess: false });
     } else {
         console.error('Error editing user profile:', error);
-        res.status(500).json({ message: 'Internal server error', isSuccess: false });
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: ResponseMessages.ERROR.INTERNAL_SERVER_ERROR, isSuccess: false });
     }
     }
 };
@@ -116,7 +117,7 @@ exports.uploadUserImage = async (req, res) => {
         let user = await findUserFromUserId(userId);
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(StatusCodes.NOT_FOUND).json({ message: ResponseMessages.ERROR.USER_NOT_FOUND, isSuccess: false });
         }
 
         if (req.file) {
@@ -130,16 +131,15 @@ exports.uploadUserImage = async (req, res) => {
 
             const uploadedObject = await s3.upload(params).promise();
             await updateUser(userId, { imageURL: uploadedObject.Location });
-            return res.status(200).json({ message: 'Image Uploaded successfully', isSuccess: true });
+            return res.status(StatusCodes.SUCCESS).json({ message: ResponseMessages.SUCCESS.IMAGE_UPLOADED, isSuccess: true });
         }
 
-        res.status(400).json({ message: 'No file uploaded', isSuccess: false });
+        res.status(StatusCodes.BAD_REQUEST).json({ message: ResponseMessages.ERROR.FILE_UPLOADED, isSuccess: false });
     } catch (error) {
         console.error('Error uploading user image:', error);
-        res.status(500).json({ message: 'Internal server error', isSuccess: false });
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: ResponseMessages.ERROR.INTERNAL_SERVER_ERROR, isSuccess: false });
     }
 }
-
 
 exports.editRole = async (req, res) => {
     try {
@@ -148,14 +148,14 @@ exports.editRole = async (req, res) => {
 
         let user = await findUserFromUserId(userId);
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(StatusCodes.NOT_FOUND).json({ message: ResponseMessages.ERROR.USER_NOT_FOUND, isSuccess: false });
         }
 
         await updateUser(userId, { accessRole: roleId });
 
-        res.status(200).json({ message: 'Access role updated successfully', isSuccess: true });
+        res.status(StatusCodes.SUCCESS).json({ message: ResponseMessages.SUCCESS.ROLE_UPDATED, isSuccess: true });
     } catch (error) {
         console.error('Error editing user access role:', error);
-        res.status(500).json({ message: 'Internal server error', isSuccess: false });
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: ResponseMessages.ERROR.INTERNAL_SERVER_ERROR, isSuccess: false });
     }
 };
